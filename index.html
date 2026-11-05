@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tradutor Voz a Voz</title>
+<style>
+    :root {
+        --bg: #0f1115; --card: #1a1d24; --border: #2a2e38;
+        --text: #e6e8eb; --muted: #98a2ae; --primary: #3b82f6;
+        --green: #10b981; --red: #ef4444;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
+    
+    .container { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 15px; }
+    
+    header { text-align: center; margin-bottom: 10px; }
+    header h1 { font-size: 1.8rem; color: var(--primary); }
+    header p { color: var(--muted); font-size: 0.9rem; }
+    
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    
+    .lang-row { display: flex; align-items: center; gap: 10px; }
+    .lang-row select { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: #0b0d11; color: var(--text); font-size: 1rem; outline: none; }
+    .lang-row .arrow { color: var(--muted); font-size: 1.2rem; }
+    
+    textarea { width: 100%; height: 80px; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: #0b0d11; color: var(--text); font-size: 1rem; resize: vertical; outline: none; }
+    textarea:focus { border-color: var(--primary); }
+    
+    .mic-btn { width: 100%; padding: 20px; border-radius: 50%; border: none; background: var(--primary); color: white; font-size: 3rem; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; width: 100px; height: 100px; margin: 0 auto; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+    .mic-btn:hover { transform: scale(1.05); }
+    .mic-btn.listening { background: var(--red); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); } 70% { box-shadow: 0 0 0 25px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+    .mic-btn.speaking { background: var(--green); animation: pulse-green 1.5s infinite; }
+    @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); } 70% { box-shadow: 0 0 0 25px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+    
+    .status { text-align: center; font-size: 0.9rem; color: var(--muted); min-height: 24px; font-weight: 500; }
+    
+    .result-box { background: #0b0d11; border: 1px solid var(--border); border-radius: 12px; padding: 15px; min-height: 80px; display: flex; flex-direction: column; gap: 8px; }
+    .result-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .result-text { font-size: 1.2rem; font-weight: 600; color: var(--green); line-height: 1.4; word-break: break-word; }
+    
+    .controls { display: flex; gap: 10px; }
+    .controls button { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--text); font-weight: 600; cursor: pointer; }
+    .controls button:hover { background: #2a2e38; }
+    .controls button.active { background: var(--primary); color: white; border-color: var(--primary); }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🌐 Tradutor Voz a Voz</h1>
+        <p>Fale, ele traduz e responde na hora.</p>
+    </header>
+
+    <div class="card">
+        <div class="lang-row">
+            <select id="sourceLang">
+                <option value="pt-BR">Português (BR)</option>
+                <option value="pt-PT">Português (PT)</option>
+                <option value="en">Inglês</option>
+                <option value="es">Espanhol</option>
+                <option value="fr">Francês</option>
+                <option value="de">Alemão</option>
+                <option value="it">Italiano</option>
+                <option value="ja">Japonês</option>
+                <option value="ko">Coreano</option>
+                <option value="zh-CN">Mandarim</option>
+                <option value="he">Hebraico</option>
+                <option value="la">Latim</option>
+            </select>
+            <span class="arrow">→</span>
+            <select id="targetLang">
+                <option value="en">Inglês</option>
+                <option value="es">Espanhol</option>
+                <option value="fr">Francês</option>
+                <option value="pt-BR">Português (BR)</option>
+                <option value="pt-PT">Português (PT)</option>
+                <option value="ko">Coreano</option>
+                <option value="ja">Japonês</option>
+                <option value="zh-CN">Mandarim</option>
+                <option value="la">Latim</option>
+                <option value="de">Alemão</option>
+                <option value="it">Italiano</option>
+                <option value="he">Hebraico</option>
+            </select>
+        </div>
+
+        <textarea id="inputText" placeholder="O que você falou aparece aqui..."></textarea>
+        
+        <button class="mic-btn" id="micBtn" onclick="toggleMic()">
+            🎤
+        </button>
+        
+        <div class="status" id="status">Toque no microfone para começar</div>
+    </div>
+
+    <div class="result-box">
+        <div class="result-label">Tradução (Toque para ouvir novamente)</div>
+        <div class="result-text" id="translatedText" onclick="falarTraducao()">Aguardando...</div>
+    </div>
+
+    <div class="controls">
+        <button id="autoSpeakBtn" class="active" onclick="toggleAutoSpeak()">🔊 Fala Auto: ON</button>
+        <button onclick="falarTraducao()">🔊 Ouvir</button>
+    </div>
+</div>
+
+<script>
+    const inputText = document.getElementById('inputText');
+    const translatedText = document.getElementById('translatedText');
+    const sourceLang = document.getElementById('sourceLang');
+    const targetLang = document.getElementById('targetLang');
+    const micBtn = document.getElementById('micBtn');
+    const statusEl = document.getElementById('status');
+    const autoSpeakBtn = document.getElementById('autoSpeakBtn');
+
+    let recognition = null;
+    let isListening = false;
+    let isSpeaking = false;
+    let autoSpeak = true;
+    let ultimaTraducao = "";
+
+    // Inicializa o reconhecimento de voz
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        
+        recognition.onstart = () => {
+            isListening = true;
+            micBtn.classList.add('listening');
+            micBtn.classList.remove('speaking');
+            micBtn.innerHTML = '🔴';
+            statusEl.innerText = "Ouvindo você...";
+        };
+
+        recognition.onresult = (event) => {
+            const texto = event.results[0][0].transcript;
+            inputText.value = texto;
+            statusEl.innerText = "Traduzindo...";
+            traduzirTexto();
+        };
+
+        recognition.onerror = (event) => {
+            if (event.error === 'not-allowed') {
+                statusEl.innerText = "Permissão de microfone negada.";
+            } else {
+                statusEl.innerText = "Erro: " + event.error;
+            }
+            pararMic();
+        };
+
+        recognition.onend = () => {
+            if (isListening) pararMic();
+        };
+    } else {
+        statusEl.innerText = "Navegador não suporta microfone. Use Chrome/Edge.";
+        micBtn.disabled = true;
+        micBtn.style.opacity = '0.5';
+    }
+
+    function toggleMic() {
+        if (!recognition) return;
+        
+        // Se a IA estiver falando, para a fala primeiro
+        if (isSpeaking) {
+            window.speechSynthesis.cancel();
+            isSpeaking = false;
+            micBtn.classList.remove('speaking');
+        }
+
+        if (isListening) {
+            recognition.stop();
+        } else {
+            recognition.lang = sourceLang.value;
+            recognition.start();
+        }
+    }
+
+    function pararMic() {
+        isListening = false;
+        micBtn.classList.remove('listening');
+        micBtn.innerHTML = '🎤';
+        if (statusEl.innerText === "Ouvindo você..." || statusEl.innerText === "Traduzindo...") {
+            statusEl.innerText = "Toque no microfone para falar novamente";
+        }
+    }
+
+    // Tradução via Google Translate
+    async function traduzirTexto() {
+        const texto = inputText.value.trim();
+        if (!texto) {
+            statusEl.innerText = "Nada para traduzir.";
+            return;
+        }
+
+        const source = sourceLang.value;
+        const target = targetLang.value;
+
+        try {
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${source}&tl=${target}&dt=t&q=${encodeURIComponent(texto)}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data && data[0] && data[0][0] && data[0][0][0]) {
+                ultimaTraducao = data[0][0][0];
+                translatedText.innerText = ultimaTraducao;
+                
+                // Se a fala automática estiver ligada, fala na hora
+                if (autoSpeak) {
+                    falarTraducao();
+                } else {
+                    statusEl.innerText = "Tradução concluída.";
+                }
+            } else {
+                statusEl.innerText = "Erro ao traduzir.";
+            }
+        } catch (error) {
+            console.error(error);
+            statusEl.innerText = "Erro de conexão.";
+        }
+    }
+
+    // Fala a tradução
+    function falarTraducao() {
+        if (!ultimaTraducao) return;
+
+        // Para o microfone para ele não ouvir a própria voz
+        if (isListening) {
+            recognition.stop();
+        }
+
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(ultimaTraducao);
+        const target = targetLang.value;
+
+        const langMap = {
+            'pt-BR': 'pt-BR', 'pt-PT': 'pt-PT', 'en': 'en-US', 'es': 'es-ES',
+            'fr': 'fr-FR', 'de': 'de-DE', 'it': 'it-IT', 'ja': 'ja-JP',
+            'ko': 'ko-KR', 'zh-CN': 'zh-CN', 'he': 'he-IL', 'la': 'it-IT'
+        };
+        utterance.lang = langMap[target] || 'en-US';
+        
+        const voices = window.speechSynthesis.getVoices();
+        const voice = voices.find(v => v.lang.startsWith(utterance.lang.split('-')[0]));
+        if (voice) utterance.voice = voice;
+
+        utterance.onstart = () => {
+            isSpeaking = true;
+            micBtn.classList.add('speaking');
+            micBtn.classList.remove('listening');
+            micBtn.innerHTML = '🔊';
+            statusEl.innerText = "Falando tradução...";
+        };
+
+        utterance.onend = () => {
+            isSpeaking = false;
+            micBtn.classList.remove('speaking');
+            micBtn.innerHTML = '🎤';
+            statusEl.innerText = "Tradução finalizada. Toque para falar novamente.";
+        };
+
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function toggleAutoSpeak() {
+        autoSpeak = !autoSpeak;
+        if (autoSpeak) {
+            autoSpeakBtn.classList.add('active');
+            autoSpeakBtn.innerText = '🔊 Fala Auto: ON';
+        } else {
+            autoSpeakBtn.classList.remove('active');
+            autoSpeakBtn.innerText = '🔇 Fala Auto: OFF';
+        }
+    }
+
+    // Carrega as vozes do sistema
+    window.speechSynthesis.onvoiceschanged = () => {};
+</script>
+</body>
+</html>
